@@ -32,13 +32,13 @@ local is_tls = false        -- 加密与否, 要看服务器的实际情况
 local sernum = 0
 local crytoflag = 0
 --直流
-local pile_id = '10002302130001'
-local pile_type = '00'
-local pile_number = '02'
+-- local pile_id = '10002302130001'
+-- local pile_type = '00'
+-- local pile_number = '02'
 --交流
--- local pile_id = '10002301070009'
--- local pile_type = '01'
--- local pile_number = '01'
+local pile_id = '10002301070009'
+local pile_type = '01'
+local pile_number = '01'
 
 sys.taskInit(function()
     sys.wait(1000)
@@ -537,9 +537,10 @@ function sockettask(d1Name, txqueue, rxtopic)
             -- 循环尾部, 继续下一轮循环
         end
         -- 能到这里, 要么服务器断开连接, 要么上报(tx)失败, 或者是主动退出
-        libnet.close(d1Name, 15000, netc)
+        libnet.close(d1Name, 0, netc)
+        rtos.reboot()
         -- log.info(rtos.meminfo("sys"))
-        -- sys.wait(5000) -- 这是重连时长, 自行调整
+        -- sys.wait(20000) -- 这是重连时长, 自行调整
     end
 end
 
@@ -614,8 +615,7 @@ uart.on(uartid, "receive", function(id, len)
                 end
                 print('============================')
             else
-                local data = string.fromHex(s)
-                sys.publish(topic, "uplink", data)
+                print('未识别的指令')
             end
             -- log.info("uart", "receive", id, #s, s:toHex())
         end
