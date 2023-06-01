@@ -439,7 +439,7 @@ function Bill_Detail_Link(gun_1, Gfeemodel)
         '0000000000000000'                    -- 物理卡号
     return ret
 end
-
+-- 上传实时监测数据连接
 function Up_Data_Link(gun_1)
     local ret = gun_1.ordernumber .. gun_1.pile_id .. gun_1.id .. gun_1.state .. gun_1.toHome ..
         gun_1.linkBattery .. gun_1.outVol .. gun_1.outCurr .. gun_1.gunTemp .. gun_1.gunCode ..
