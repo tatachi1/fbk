@@ -447,5 +447,12 @@ function Up_Data_Link(gun_1)
         gun_1.remainTime .. gun_1.chargeDegree .. gun_1.chargeLossDegree .. gun_1.money .. gun_1.error
     return ret
 end
-
+-- 字符串转ascii
+function String2Ascii(t)
+    local sum = ''
+    for i = 1, #t, 1 do
+        sum = sum .. string.format('%02X', t:byte(i))
+    end
+    return sum
+end
 return datafix

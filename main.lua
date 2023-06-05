@@ -90,20 +90,20 @@ sys.taskInit(function()
     if Gfeemodel == nil then
         fskv.set("Gfeemodel", {
             -- pile_id = '10002302130001', --桩号
-            feemodel_id = '00000000',   --模型号
-            fee_1 = '00000000',         --尖
-            serfee_1 = '00000000',      --尖
-            fee_1_sum = '00000000',     --尖sum
-            fee_2 = '00000000',         --峰
-            serfee_2 = '00000000',      --峰
-            fee_2_sum = '00000000',     --峰sum
-            fee_3 = '00000000',         --平
-            serfee_3 = '00000000',      --平
-            fee_3_sum = '00000000',     --平sum
-            fee_4 = '00000000',         --谷
-            serfee_4 = '00000000',      --谷
-            fee_4_sum = '00000000',     --谷sum
-            loss_rat = '00',            --计损比例
+            feemodel_id = '00000000', --模型号
+            fee_1 = '00000000',       --尖
+            serfee_1 = '00000000',    --尖
+            fee_1_sum = '00000000',   --尖sum
+            fee_2 = '00000000',       --峰
+            serfee_2 = '00000000',    --峰
+            fee_2_sum = '00000000',   --峰sum
+            fee_3 = '00000000',       --平
+            serfee_3 = '00000000',    --平
+            fee_3_sum = '00000000',   --平sum
+            fee_4 = '00000000',       --谷
+            serfee_4 = '00000000',    --谷
+            fee_4_sum = '00000000',   --谷sum
+            loss_rat = '00',          --计损比例
             time = {}
         })
         Gfeemodel = fskv.get('Gfeemodel')
@@ -145,48 +145,19 @@ local function netCB(msg)
     log.info("未处理消息", msg[1], msg[2], msg[3], msg[4])
 end
 
--- 统一联网函数
--- sys.taskInit(function()
---     -----------------------------
---     -- 统一联网函数, 可自行删减
---     ----------------------------
---     if wlan and wlan.connect then
---         -- wifi 联网, ESP32系列均支持, 要根据实际情况修改ssid和password!!
---         local ssid = "uiot"
---         local password = "123456"
---         log.info("wifi", ssid, password)
---         -- TODO 改成自动配网
---         wlan.init()
---         wlan.setMode(wlan.STATION) -- 默认也是这个模式,不调用也可以
---         wlan.connect(ssid, password, 1)
---     elseif mobile then
---         -- EC618系列, 如Air780E/Air600E/Air700E
---         -- mobile.simid(2) -- 自动切换SIM卡, 按需启用
---         -- 模块默认会自动联网, 无需额外的操作
---     elseif w5500 then
---         -- w5500 以太网
---         w5500.init(spi.HSPI_0, 24000000, pin.PC14, pin.PC01, pin.PC00)
---         w5500.config() --默认是DHCP模式
---         w5500.bind(socket.ETH0)
---     elseif socket then
---         -- 适配了socket库也OK, 就当1秒联网吧
---         sys.timerStart(sys.publish, 1000, "IP_READY")
---     else
---         -- 其他不认识的bsp, 循环提示一下吧
---         while 1 do
---             sys.wait(1000)
---             log.info("bsp", "本bsp可能未适配网络层, 请查证")
---         end
---     end
---     -- 默认都等到联网成功
---     sys.waitUntil("IP_READY")
---     sys.publish("net_ready")
--- end)
+-- 初始化
+sys.taskInit(function()
+    sys.waitUntil('simidready')
+    local qr = 'https://www.fbkcharge.com/qr/' .. pile_id .. gun_1.id
+    sys.publish('screen', '820220' .. qr)
+    sys.publish('screen', '820160' .. pile_id)
+    sys.publish("init_ready")
+end)
 
 -- 上送下送task
 local function sockettest()
     -- 等待联网
-    sys.waitUntil("simidready")
+    sys.waitUntil("init_ready")
     -- 开始正在的逻辑, 发起socket链接,等待数据/上报心跳
     taskName = "sc"
     topic = taskName .. "_txrx"
@@ -349,7 +320,7 @@ sys.taskInit(function()
                 -- local Ordernumber = data:sub(1, 32)
                 gun_1.ordernumber = data:sub(1, 32)
                 gun_1.charge_onTime = ConvertToCP56Time2a_Osdate()
-                fskv.set('gun_1',gun_1)
+                fskv.set('gun_1', gun_1)
                 local data = Frame_Send(sernum, crytoflag, '33', gun_1.ordernumber .. pile_id .. gun_1.id .. '0100')
                 sys.publish(topic, "uplink", data)
                 log.info('charge', '远程充电启动')
@@ -360,7 +331,7 @@ sys.taskInit(function()
                     local data = Frame_Send(sernum, crytoflag, '13', detail)
                     sys.publish(topic, "uplink", data)
                     log.info('charge', '启桩上传数据', '上传实时监测数据')
-                end,1000)
+                end, 1000)
             end
             -- 应答 远程充电停止
             if type == '36' then
@@ -375,12 +346,12 @@ sys.taskInit(function()
                     local data = Frame_Send(sernum, crytoflag, '13', detail)
                     sys.publish(topic, "uplink", data)
                     log.info('charge', '停桩上传数据', '上传实时监测数据')
-                end,1000)
+                end, 1000)
 
                 local result = sys.waitUntil('chargeoffsucc', 2000)
                 if not result then
                     local detail = Bill_Detail_Link(gun_1, Gfeemodel)
-                    fskv.set('bill1',detail)
+                    fskv.set('bill1', detail)
                     local data = Frame_Send(sernum, crytoflag, '3f', detail)
                     log.info('bill', 'frame', '直接上传交易记录')
                     sys.publish(topic, "uplink", data)
@@ -544,18 +515,23 @@ function sockettask(d1Name, txqueue, rxtopic)
     end
 end
 
-local uartid = 1 -- 根据实际设备选取不同的uartid
 --初始化
 local result = uart.setup(
-    uartid, --串口id
+    1,      --串口id
     115200, --波特率
     8,      --数据位
     1       --停止位
 )
+local result = uart.setup(
+    2,     --串口id
+    38400, --波特率
+    8,     --数据位
+    1      --停止位
+)
 -- --循环发数据
-sys.timerLoopStart(uart.write, 10000, uartid, "ready")
+-- sys.timerLoopStart(uart.write, 10000, 1, "ready")
 -- 收取数据会触发回调, 这里的"receive" 是固定值
-uart.on(uartid, "receive", function(id, len)
+uart.on(1, "receive", function(id, len)
     local s = ""
     repeat
         -- 如果是air302, len不可信, 传1024
@@ -624,10 +600,53 @@ uart.on(uartid, "receive", function(id, len)
         end
     until s == ""
 end)
+uart.on(2, "receive", function(id, len)
+    local s = ""
+    repeat
+        -- 如果是air302, len不可信, 传1024
+        -- s = uart.read(id, 1024)
+        s = uart.read(id, len)
+        if #s > 0 then -- #s 是取字符串的长度
+            -- 如果传输二进制/十六进制数据, 部分字符不可见, 不代表没收到
+            -- 关于收发hex值,请查阅 https://doc.openluat.com/article/583
+            local full = string.toHex(s)
+            local fix = s:sub(7, -1)
+            local type = fix:sub(1, 2)
+            log.info("uart", "receive", id, #full, full, type,fix)
+            sys.publish('serial2_recv',type,fix)
+            -- log.info("uart", "receive", id, #s, s:toHex()
+        end
+        if #s == len then
+            break
+        end
+    until s == ""
+end)
 -- 并非所有设备都支持sent事件
 -- uart.on(uartid, "sent", function(id)
 --     log.info("uart", "sent", id)
 -- end)
+sys.taskInit(function()
+    while true do
+        local result, type, data = sys.waitUntil('serial2_recv')
+        -- 数据变量接收
+        if result and type == '83' then
+            local addr = data:sub(1,4)
+            local datln = data:sub(5,6)
+            local dat = data:sub(7,-1)
+            sys.publish('83',addr,dat)
+        end
+        uart.write(2, data)
+    end
+end)
+sys.taskInit(function ()
+    while true do
+        local result,addr,dat = sys.waitUntil('83')
+        -- 桩号设置
+        if addr == '0a00'then
+            fskv.set()
+        end
+    end
+end)
 sys.taskInit(sockettest)
 
 -- 用户代码已结束---------------------------------------------
